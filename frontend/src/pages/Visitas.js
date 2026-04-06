@@ -24,6 +24,7 @@ import {
   useTheme
 } from '@mui/material';
 import RoomIcon from '@mui/icons-material/Room';
+import NearMeIcon from '@mui/icons-material/NearMe';
 import {
   getVisitas,
   crearVisita,
@@ -105,6 +106,11 @@ export default function Visitas() {
     window.open(`https://www.google.com/maps?q=${latitud},${longitud}`, '_blank');
   };
 
+  const abrirWaze = (latitud, longitud) => {
+    if (!latitud || !longitud) return;
+    window.open(`https://waze.com/ul?ll=${latitud},${longitud}&navigate=yes`, '_blank');
+  };
+
   return (
     <>
       <Navbar />
@@ -126,7 +132,7 @@ export default function Visitas() {
               Visitas
             </Typography>
             <Typography color="text.secondary">
-              Control diario de recorridos
+              Ruta diaria y acceso directo al mapa
             </Typography>
           </Box>
 
@@ -165,19 +171,31 @@ export default function Visitas() {
                     <Typography variant="body2"><strong>Fecha:</strong> {new Date(v.fecha).toLocaleDateString('es-DO')}</Typography>
                   </Stack>
 
-                  <Stack direction="row" spacing={1} mt={1.5} mb={2}>
+                  <Stack direction="row" spacing={1} mt={1.5} mb={2} flexWrap="wrap">
                     <Chip label={v.estado} color={colores[v.estado] || 'default'} size="small" />
-                    {v.negocios?.latitud && v.negocios?.longitud && (
+                  </Stack>
+
+                  {(v.negocios?.latitud && v.negocios?.longitud) && (
+                    <Stack spacing={1} mb={2}>
                       <Button
                         size="small"
                         variant="outlined"
                         startIcon={<RoomIcon />}
                         onClick={() => abrirGoogleMaps(v.negocios.latitud, v.negocios.longitud)}
                       >
-                        Mapa
+                        Abrir en Google Maps
                       </Button>
-                    )}
-                  </Stack>
+
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<NearMeIcon />}
+                        onClick={() => abrirWaze(v.negocios.latitud, v.negocios.longitud)}
+                      >
+                        Abrir en Waze
+                      </Button>
+                    </Stack>
+                  )}
 
                   <TextField
                     select
@@ -198,10 +216,10 @@ export default function Visitas() {
           </Stack>
         ) : (
           <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid #e5e7eb', overflowX: 'auto' }}>
-            <Table sx={{ minWidth: 1100 }}>
+            <Table sx={{ minWidth: 1250 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: '#111827' }}>
-                  {['Negocio', 'Mensajero', 'Estado', 'Dinero', '% Pagado', 'Fecha', 'Mapa', 'Acciones'].map((h) => (
+                  {['Negocio', 'Mensajero', 'Estado', 'Dinero', '% Pagado', 'Fecha', 'Google Maps', 'Waze', 'Acciones'].map((h) => (
                     <TableCell key={h} sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                       {h}
                     </TableCell>
@@ -227,11 +245,21 @@ export default function Visitas() {
                           startIcon={<RoomIcon />}
                           onClick={() => abrirGoogleMaps(v.negocios.latitud, v.negocios.longitud)}
                         >
-                          Ver mapa
+                          Maps
                         </Button>
-                      ) : (
-                        '-'
-                      )}
+                      ) : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {v.negocios?.latitud && v.negocios?.longitud ? (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<NearMeIcon />}
+                          onClick={() => abrirWaze(v.negocios.latitud, v.negocios.longitud)}
+                        >
+                          Waze
+                        </Button>
+                      ) : '-'}
                     </TableCell>
                     <TableCell>
                       <TextField

@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import MapIcon from '@mui/icons-material/Map';
+import NearMeIcon from '@mui/icons-material/NearMe';
 import {
   getNegocios,
   crearNegocio,
@@ -38,6 +39,9 @@ export default function Negocios() {
   const [negocios, setNegocios] = useState([]);
   const [open, setOpen] = useState(false);
   const [editando, setEditando] = useState(null);
+  const [mensaje, setMensaje] = useState('');
+  const [cargandoUbicacion, setCargandoUbicacion] = useState(false);
+
   const [form, setForm] = useState({
     nombre: '',
     responsable: '',
@@ -48,8 +52,6 @@ export default function Negocios() {
     latitud: '',
     longitud: ''
   });
-  const [mensaje, setMensaje] = useState('');
-  const [cargandoUbicacion, setCargandoUbicacion] = useState(false);
 
   const theme = useTheme();
   const esMovil = useMediaQuery(theme.breakpoints.down('md'));
@@ -97,10 +99,15 @@ export default function Negocios() {
         return;
       }
 
+      const payload = {
+        ...form,
+        porcentaje: form.porcentaje === '' ? 0 : Number(form.porcentaje)
+      };
+
       if (editando) {
-        await editarNegocio(editando.id, form);
+        await editarNegocio(editando.id, payload);
       } else {
-        await crearNegocio(form);
+        await crearNegocio(payload);
       }
 
       setMensaje('Guardado exitosamente');
@@ -111,7 +118,7 @@ export default function Negocios() {
     }
   };
 
-  const desactivar = async (id) => {
+  const eliminar = async (id) => {
     try {
       await desactivarNegocio(id);
       setMensaje('Negocio desactivado');
@@ -145,7 +152,6 @@ export default function Negocios() {
       },
       (error) => {
         let texto = 'No se pudo obtener la ubicación';
-
         if (error.code === 1) texto = 'Permiso de ubicación denegado';
         if (error.code === 2) texto = 'Ubicación no disponible';
         if (error.code === 3) texto = 'Tiempo agotado al buscar ubicación';
@@ -166,13 +172,18 @@ export default function Negocios() {
     window.open(`https://www.google.com/maps?q=${latitud},${longitud}`, '_blank');
   };
 
+  const abrirWaze = (latitud, longitud) => {
+    if (!latitud || !longitud) return;
+    window.open(`https://waze.com/ul?ll=${latitud},${longitud}&navigate=yes`, '_blank');
+  };
+
   const campos = [
     { key: 'nombre', label: 'Nombre' },
     { key: 'responsable', label: 'Responsable' },
     { key: 'telefono', label: 'Teléfono' },
     { key: 'direccion', label: 'Dirección' },
     { key: 'referencia', label: 'Referencia' },
-    { key: 'porcentaje', label: 'Porcentaje' },
+    { key: 'porcentaje', label: '% ganancia local' },
     { key: 'latitud', label: 'Latitud' },
     { key: 'longitud', label: 'Longitud' }
   ];
@@ -189,15 +200,20 @@ export default function Negocios() {
           alignItems={{ xs: 'stretch', md: 'center' }}
           mb={3}
         >
-          <Typography
-            variant="h4"
-            fontWeight="bold"
-            sx={{ fontSize: { xs: '1.8rem', md: '2.125rem' } }}
-          >
-            Negocios
-          </Typography>
+          <Box>
+            <Typography
+              variant="h4"
+              fontWeight="bold"
+              sx={{ fontSize: { xs: '1.8rem', md: '2.125rem' } }}
+            >
+              Negocios
+            </Typography>
+            <Typography color="text.secondary">
+              Ubicación real y navegación directa
+            </Typography>
+          </Box>
 
-          {usuario.rol === 'administrador' && (
+          {usuario?.rol === 'administrador' && (
             <Button
               variant="contained"
               onClick={() => abrir()}
@@ -221,33 +237,23 @@ export default function Negocios() {
         {esMovil ? (
           <Stack spacing={2}>
             {negocios.map((n) => (
-              <Card key={n.id} elevation={2}>
+              <Card key={n.id} elevation={0} sx={{ borderRadius: 4, border: '1px solid #e5e7eb' }}>
                 <CardContent>
                   <Typography variant="h6" fontWeight="bold" mb={1}>
                     {n.nombre}
                   </Typography>
 
-                  <Typography variant="body2">
-                    <strong>Responsable:</strong> {n.responsable || '-'}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Teléfono:</strong> {n.telefono || '-'}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Dirección:</strong> {n.direccion || '-'}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Referencia:</strong> {n.referencia || '-'}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>% Acuerdo:</strong> {n.porcentaje || 0}%
-                  </Typography>
-                  <Typography variant="body2" mb={2}>
-                    <strong>Estado:</strong> {n.estado}
-                  </Typography>
+                  <Stack spacing={0.5}>
+                    <Typography variant="body2"><strong>Responsable:</strong> {n.responsable || '-'}</Typography>
+                    <Typography variant="body2"><strong>Teléfono:</strong> {n.telefono || '-'}</Typography>
+                    <Typography variant="body2"><strong>Dirección:</strong> {n.direccion || '-'}</Typography>
+                    <Typography variant="body2"><strong>Referencia:</strong> {n.referencia || '-'}</Typography>
+                    <Typography variant="body2"><strong>% local:</strong> {n.porcentaje || 0}%</Typography>
+                    <Typography variant="body2"><strong>Estado:</strong> {n.estado}</Typography>
+                  </Stack>
 
-                  <Stack spacing={1}>
-                    {(n.latitud && n.longitud) && (
+                  {(n.latitud && n.longitud) && (
+                    <Stack spacing={1} mt={2}>
                       <Button
                         size="small"
                         variant="outlined"
@@ -256,33 +262,39 @@ export default function Negocios() {
                       >
                         Abrir en Google Maps
                       </Button>
-                    )}
 
-                    {usuario.rol === 'administrador' && (
-                      <Stack direction="row" spacing={1}>
-                        <Button size="small" variant="outlined" onClick={() => abrir(n)}>
-                          Editar
-                        </Button>
-                        <Button size="small" color="error" variant="outlined" onClick={() => desactivar(n.id)}>
-                          Desactivar
-                        </Button>
-                      </Stack>
-                    )}
-                  </Stack>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<NearMeIcon />}
+                        onClick={() => abrirWaze(n.latitud, n.longitud)}
+                      >
+                        Abrir en Waze
+                      </Button>
+                    </Stack>
+                  )}
+
+                  {usuario?.rol === 'administrador' && (
+                    <Stack direction="row" spacing={1} mt={2}>
+                      <Button size="small" variant="outlined" onClick={() => abrir(n)}>
+                        Editar
+                      </Button>
+                      <Button size="small" color="error" variant="outlined" onClick={() => eliminar(n.id)}>
+                        Desactivar
+                      </Button>
+                    </Stack>
+                  )}
                 </CardContent>
               </Card>
             ))}
           </Stack>
         ) : (
-          <Paper elevation={2} sx={{ width: '100%', overflowX: 'auto' }}>
-            <Table sx={{ minWidth: 1100 }}>
+          <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid #e5e7eb', overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 1200 }}>
               <TableHead>
-                <TableRow sx={{ backgroundColor: '#1a1a2e' }}>
-                  {['Nombre', 'Responsable', 'Teléfono', 'Dirección', 'Referencia', '%', 'Mapa', 'Estado', 'Acciones'].map((h) => (
-                    <TableCell
-                      key={h}
-                      sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}
-                    >
+                <TableRow sx={{ backgroundColor: '#111827' }}>
+                  {['Nombre', 'Responsable', 'Teléfono', 'Dirección', 'Referencia', '% Local', 'Maps', 'Waze', 'Estado', 'Acciones'].map((h) => (
+                    <TableCell key={h} sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                       {h}
                     </TableCell>
                   ))}
@@ -297,7 +309,7 @@ export default function Negocios() {
                     <TableCell>{n.telefono}</TableCell>
                     <TableCell>{n.direccion}</TableCell>
                     <TableCell>{n.referencia}</TableCell>
-                    <TableCell>{n.porcentaje}%</TableCell>
+                    <TableCell>{n.porcentaje || 0}%</TableCell>
                     <TableCell>
                       {(n.latitud && n.longitud) ? (
                         <Button
@@ -306,22 +318,28 @@ export default function Negocios() {
                           startIcon={<MapIcon />}
                           onClick={() => abrirGoogleMaps(n.latitud, n.longitud)}
                         >
-                          Ver mapa
+                          Maps
                         </Button>
-                      ) : (
-                        '-'
-                      )}
+                      ) : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {(n.latitud && n.longitud) ? (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<NearMeIcon />}
+                          onClick={() => abrirWaze(n.latitud, n.longitud)}
+                        >
+                          Waze
+                        </Button>
+                      ) : '-'}
                     </TableCell>
                     <TableCell>{n.estado}</TableCell>
                     <TableCell>
-                      {usuario.rol === 'administrador' && (
+                      {usuario?.rol === 'administrador' && (
                         <Stack direction="row" spacing={1}>
-                          <Button size="small" onClick={() => abrir(n)}>
-                            Editar
-                          </Button>
-                          <Button size="small" color="error" onClick={() => desactivar(n.id)}>
-                            Desactivar
-                          </Button>
+                          <Button size="small" onClick={() => abrir(n)}>Editar</Button>
+                          <Button size="small" color="error" onClick={() => eliminar(n.id)}>Desactivar</Button>
                         </Stack>
                       )}
                     </TableCell>
@@ -332,16 +350,8 @@ export default function Negocios() {
           </Paper>
         )}
 
-        <Dialog
-          open={open}
-          onClose={cerrar}
-          fullWidth
-          maxWidth="sm"
-          fullScreen={esMovil}
-        >
-          <DialogTitle>
-            {editando ? 'Editar Negocio' : 'Nuevo Negocio'}
-          </DialogTitle>
+        <Dialog open={open} onClose={cerrar} fullWidth maxWidth="sm" fullScreen={esMovil}>
+          <DialogTitle>{editando ? 'Editar Negocio' : 'Nuevo Negocio'}</DialogTitle>
 
           <DialogContent sx={{ pt: 2 }}>
             <Stack spacing={2} sx={{ mt: 1 }}>
@@ -350,18 +360,13 @@ export default function Negocios() {
                   key={campo.key}
                   label={campo.label}
                   value={form[campo.key] || ''}
-                  onChange={(e) =>
-                    setForm({ ...form, [campo.key]: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, [campo.key]: e.target.value })}
                   fullWidth
                   type={campo.key === 'porcentaje' ? 'number' : 'text'}
                 />
               ))}
 
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={1}
-              >
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                 <Button
                   variant="contained"
                   startIcon={
@@ -375,14 +380,25 @@ export default function Negocios() {
                 </Button>
 
                 {(form.latitud && form.longitud) && (
-                  <Button
-                    variant="outlined"
-                    startIcon={<MapIcon />}
-                    onClick={() => abrirGoogleMaps(form.latitud, form.longitud)}
-                    sx={{ minHeight: 48 }}
-                  >
-                    Ver en Google Maps
-                  </Button>
+                  <>
+                    <Button
+                      variant="outlined"
+                      startIcon={<MapIcon />}
+                      onClick={() => abrirGoogleMaps(form.latitud, form.longitud)}
+                      sx={{ minHeight: 48 }}
+                    >
+                      Google Maps
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      startIcon={<NearMeIcon />}
+                      onClick={() => abrirWaze(form.latitud, form.longitud)}
+                      sx={{ minHeight: 48 }}
+                    >
+                      Waze
+                    </Button>
+                  </>
                 )}
               </Stack>
             </Stack>
@@ -390,9 +406,7 @@ export default function Negocios() {
 
           <DialogActions sx={{ p: 2 }}>
             <Button onClick={cerrar}>Cancelar</Button>
-            <Button variant="contained" onClick={guardar}>
-              Guardar
-            </Button>
+            <Button variant="contained" onClick={guardar}>Guardar</Button>
           </DialogActions>
         </Dialog>
       </Box>
