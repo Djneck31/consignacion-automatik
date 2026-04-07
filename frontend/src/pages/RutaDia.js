@@ -1,4 +1,4 @@
-import { Box, Typography, Paper, Card, CardContent, Stack, Button } from '@mui/material';
+import { Box, Typography, Card, CardContent, Stack, Button } from '@mui/material';
 import RoomIcon from '@mui/icons-material/Room';
 import NearMeIcon from '@mui/icons-material/NearMe';
 import Navbar from '../components/Navbar';
