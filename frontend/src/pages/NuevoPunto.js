@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -12,7 +12,9 @@ import {
   Divider,
   Chip,
   IconButton,
-  MenuItem
+  MenuItem,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import AddLocationAltIcon from '@mui/icons-material/AddLocationAlt';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
@@ -20,16 +22,41 @@ import SaveIcon from '@mui/icons-material/Save';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Navbar from '../components/Navbar';
+import { getProductos } from '../services/api';
 
 const productoVacio = {
-  producto: '',
+  producto_id: '',
   cantidad: '',
   precio: '',
   porcentaje_local: ''
 };
 
 export default function NuevoPunto() {
+  const [catalogo, setCatalogo] = useState([]);
+  const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
+  const [mensaje, setMensaje] = useState('');
+
   const [productos, setProductos] = useState([{ ...productoVacio }]);
+
+  useEffect(() => {
+    const cargarCatalogo = async () => {
+      try {
+        const res = await getProductos();
+        const activos = Array.isArray(res.data)
+          ? res.data.filter((p) => !p.estado || p.estado === 'activo')
+          : [];
+
+        setCatalogo(activos);
+      } catch (error) {
+        console.error(error);
+        setMensaje('No se pudo cargar el catálogo de productos');
+      } finally {
+        setCargandoCatalogo(false);
+      }
+    };
+
+    cargarCatalogo();
+  }, []);
 
   const agregarProducto = () => {
     setProductos([...productos, { ...productoVacio }]);
@@ -50,7 +77,23 @@ export default function NuevoPunto() {
     setProductos(copia);
   };
 
-  const totalUnidades = productos.reduce((acc, item) => acc + (Number(item.cantidad) || 0), 0);
+  const seleccionarProducto = (index, productoId) => {
+    const productoSeleccionado = catalogo.find((p) => String(p.id) === String(productoId));
+    const copia = [...productos];
+
+    copia[index].producto_id = productoId;
+    copia[index].precio = productoSeleccionado?.precio ?? '';
+    if (!copia[index].porcentaje_local) {
+      copia[index].porcentaje_local = productoSeleccionado?.porcentaje_local ?? '';
+    }
+
+    setProductos(copia);
+  };
+
+  const totalUnidades = productos.reduce(
+    (acc, item) => acc + (Number(item.cantidad) || 0),
+    0
+  );
 
   const totalEstimado = productos.reduce(
     (acc, item) => acc + ((Number(item.cantidad) || 0) * (Number(item.precio) || 0)),
@@ -75,6 +118,16 @@ export default function NuevoPunto() {
             Crea un local nuevo con datos, ubicación, fotos y carga inicial.
           </Typography>
         </Stack>
+
+        {mensaje && (
+          <Alert
+            sx={{ mb: 2 }}
+            severity={mensaje.toLowerCase().includes('no se pudo') ? 'error' : 'info'}
+            onClose={() => setMensaje('')}
+          >
+            {mensaje}
+          </Alert>
+        )}
 
         <Grid container spacing={2.5}>
           <Grid item xs={12} lg={8}>
@@ -106,7 +159,7 @@ export default function NuevoPunto() {
                       <TextField label="Teléfono" fullWidth />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <TextField label="% ganancia local" fullWidth type="number" />
+                      <TextField label="% ganancia local general" fullWidth type="number" />
                     </Grid>
                     <Grid item xs={12}>
                       <TextField label="Dirección" fullWidth />
@@ -193,123 +246,128 @@ export default function NuevoPunto() {
                     Carga inicial de productos
                   </Typography>
                   <Typography variant="body2" color="text.secondary" mb={2}>
-                    Puedes agregar todos los productos que se dejan por primera vez en el local.
+                    Los productos salen del catálogo real que tienes guardado en el sistema.
                   </Typography>
 
-                  <Stack spacing={2}>
-                    {productos.map((item, index) => {
-                      const subtotal = (Number(item.cantidad) || 0) * (Number(item.precio) || 0);
+                  {cargandoCatalogo ? (
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <CircularProgress size={20} />
+                      <Typography variant="body2" color="text.secondary">
+                        Cargando catálogo...
+                      </Typography>
+                    </Stack>
+                  ) : (
+                    <Stack spacing={2}>
+                      {productos.map((item, index) => {
+                        const subtotal = (Number(item.cantidad) || 0) * (Number(item.precio) || 0);
 
-                      return (
-                        <Card
-                          key={index}
-                          elevation={0}
-                          sx={{ border: '1px solid #e5e7eb', borderRadius: 4 }}
-                        >
-                          <CardContent>
-                            <Stack spacing={2}>
-                              <Stack
-                                direction="row"
-                                justifyContent="space-between"
-                                alignItems="center"
-                              >
-                                <Typography fontWeight="bold">
-                                  Producto #{index + 1}
-                                </Typography>
+                        return (
+                          <Card
+                            key={index}
+                            elevation={0}
+                            sx={{ border: '1px solid #e5e7eb', borderRadius: 4 }}
+                          >
+                            <CardContent>
+                              <Stack spacing={2}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                  <Typography fontWeight="bold">
+                                    Producto #{index + 1}
+                                  </Typography>
 
-                                <IconButton color="error" onClick={() => eliminarProducto(index)}>
-                                  <DeleteIcon />
-                                </IconButton>
+                                  <IconButton color="error" onClick={() => eliminarProducto(index)}>
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Stack>
+
+                                <Grid container spacing={2}>
+                                  <Grid item xs={12} md={6}>
+                                    <TextField
+                                      select
+                                      label="Producto"
+                                      fullWidth
+                                      value={item.producto_id}
+                                      onChange={(e) => seleccionarProducto(index, e.target.value)}
+                                    >
+                                      <MenuItem value="">Seleccionar</MenuItem>
+                                      {catalogo.map((producto) => (
+                                        <MenuItem key={producto.id} value={producto.id}>
+                                          {producto.nombre}
+                                        </MenuItem>
+                                      ))}
+                                    </TextField>
+                                  </Grid>
+
+                                  <Grid item xs={12} md={2}>
+                                    <TextField
+                                      label="Cantidad"
+                                      type="number"
+                                      fullWidth
+                                      value={item.cantidad}
+                                      onChange={(e) => actualizarProducto(index, 'cantidad', e.target.value)}
+                                    />
+                                  </Grid>
+
+                                  <Grid item xs={12} md={2}>
+                                    <TextField
+                                      label="Precio"
+                                      type="number"
+                                      fullWidth
+                                      value={item.precio}
+                                      onChange={(e) => actualizarProducto(index, 'precio', e.target.value)}
+                                    />
+                                  </Grid>
+
+                                  <Grid item xs={12} md={2}>
+                                    <TextField
+                                      label="% local"
+                                      type="number"
+                                      fullWidth
+                                      value={item.porcentaje_local}
+                                      onChange={(e) => actualizarProducto(index, 'porcentaje_local', e.target.value)}
+                                    />
+                                  </Grid>
+                                </Grid>
+
+                                <Chip
+                                  label={`Subtotal estimado: RD$ ${subtotal.toFixed(2)}`}
+                                  sx={{ width: 'fit-content' }}
+                                />
                               </Stack>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
 
-                              <Grid container spacing={2}>
-                                <Grid item xs={12} md={6}>
-                                  <TextField
-                                    select
-                                    label="Producto"
-                                    fullWidth
-                                    value={item.producto}
-                                    onChange={(e) => actualizarProducto(index, 'producto', e.target.value)}
-                                  >
-                                    <MenuItem value="">Seleccionar</MenuItem>
-                                    <MenuItem value="robusto-natural">Robusto Natural</MenuItem>
-                                    <MenuItem value="robusto-maduro">Robusto Maduro</MenuItem>
-                                    <MenuItem value="torpedo-natural">Torpedo Natural</MenuItem>
-                                    <MenuItem value="torpedo-maduro">Torpedo Maduro</MenuItem>
-                                    <MenuItem value="salomon">Salomón</MenuItem>
-                                  </TextField>
-                                </Grid>
+                      <Button
+                        variant="outlined"
+                        startIcon={<AddIcon />}
+                        onClick={agregarProducto}
+                        sx={{ minHeight: 50 }}
+                      >
+                        Agregar otro producto
+                      </Button>
 
-                                <Grid item xs={12} md={2}>
-                                  <TextField
-                                    label="Cantidad"
-                                    type="number"
-                                    fullWidth
-                                    value={item.cantidad}
-                                    onChange={(e) => actualizarProducto(index, 'cantidad', e.target.value)}
-                                  />
-                                </Grid>
-
-                                <Grid item xs={12} md={2}>
-                                  <TextField
-                                    label="Precio"
-                                    type="number"
-                                    fullWidth
-                                    value={item.precio}
-                                    onChange={(e) => actualizarProducto(index, 'precio', e.target.value)}
-                                  />
-                                </Grid>
-
-                                <Grid item xs={12} md={2}>
-                                  <TextField
-                                    label="% local"
-                                    type="number"
-                                    fullWidth
-                                    value={item.porcentaje_local}
-                                    onChange={(e) => actualizarProducto(index, 'porcentaje_local', e.target.value)}
-                                  />
-                                </Grid>
-                              </Grid>
-
-                              <Chip
-                                label={`Subtotal estimado: RD$ ${subtotal.toFixed(2)}`}
-                                sx={{ width: 'fit-content' }}
-                              />
-                            </Stack>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-
-                    <Button
-                      variant="outlined"
-                      startIcon={<AddIcon />}
-                      onClick={agregarProducto}
-                      sx={{ minHeight: 50 }}
-                    >
-                      Agregar otro producto
-                    </Button>
-
-                    <Paper
-                      elevation={0}
-                      sx={{
-                        p: 2,
-                        borderRadius: 4,
-                        border: '1px solid #e5e7eb',
-                        backgroundColor: '#f8fafc'
-                      }}
-                    >
-                      <Stack spacing={1}>
-                        <Typography fontWeight="bold">Resumen de carga inicial</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Total de unidades: <strong>{totalUnidades}</strong>
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Total estimado: <strong>RD$ {totalEstimado.toFixed(2)}</strong>
-                        </Typography>
-                      </Stack>
-                    </Paper>
-                  </Stack>
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 2,
+                          borderRadius: 4,
+                          border: '1px solid #e5e7eb',
+                          backgroundColor: '#f8fafc'
+                        }}
+                      >
+                        <Stack spacing={1}>
+                          <Typography fontWeight="bold">Resumen de carga inicial</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Total de unidades: <strong>{totalUnidades}</strong>
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Total estimado: <strong>RD$ {totalEstimado.toFixed(2)}</strong>
+                          </Typography>
+                        </Stack>
+                      </Paper>
+                    </Stack>
+                  )}
                 </Box>
 
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
@@ -335,7 +393,7 @@ export default function NuevoPunto() {
                     <Chip label="1. Datos del local" />
                     <Chip label="2. Ubicación actual" />
                     <Chip label="3. Fotos base" />
-                    <Chip label="4. Productos múltiples" />
+                    <Chip label="4. Catálogo real" />
                     <Chip label="5. Guardar todo" />
                   </Stack>
                 </CardContent>
@@ -347,8 +405,8 @@ export default function NuevoPunto() {
                     Nota
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    En la siguiente fase esto se conectará con base de datos, catálogo real,
-                    cálculos de consignación y fotos subidas de verdad.
+                    El siguiente paso será guardar de verdad este punto con sus productos iniciales,
+                    fotos y ubicación en la base de datos.
                   </Typography>
                 </CardContent>
               </Card>
