@@ -3,11 +3,11 @@ import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Negocios from './pages/Negocios';
-import Empleados from './pages/Empleados';
-import Productos from './pages/Productos';
-import Visitas from './pages/Visitas';
-import Mapa from './pages/Mapa';
+import NuevoPunto from './pages/NuevoPunto';
+import RutaDia from './pages/RutaDia';
+import Reposicion from './pages/Reposicion';
+import Evidencias from './pages/Evidencias';
+import Administracion from './pages/Administracion';
 
 export default function App() {
   return (
@@ -15,12 +15,61 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/negocios" element={<PrivateRoute><Negocios /></PrivateRoute>} />
-          <Route path="/empleados" element={<PrivateRoute soloAdmin={true}><Empleados /></PrivateRoute>} />
-          <Route path="/productos" element={<PrivateRoute><Productos /></PrivateRoute>} />
-          <Route path="/visitas" element={<PrivateRoute><Visitas /></PrivateRoute>} />
-          <Route path="/mapa" element={<PrivateRoute><Mapa /></PrivateRoute>} />
+
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/nuevo-punto"
+            element={
+              <PrivateRoute>
+                <NuevoPunto />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/ruta-dia"
+            element={
+              <PrivateRoute>
+                <RutaDia />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/reposicion"
+            element={
+              <PrivateRoute>
+                <Reposicion />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/evidencias"
+            element={
+              <PrivateRoute>
+                <Evidencias />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/administracion"
+            element={
+              <PrivateRoute soloAdmin={true}>
+                <Administracion />
+              </PrivateRoute>
+            }
+          />
+
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

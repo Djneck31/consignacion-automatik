@@ -3,7 +3,6 @@ import {
   AppBar,
   Toolbar,
   Typography,
-  Button,
   Box,
   IconButton,
   Drawer,
@@ -12,15 +11,16 @@ import {
   ListItemText,
   Divider,
   Avatar,
-  Stack
+  Stack,
+  Chip
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import StoreIcon from '@mui/icons-material/Store';
+import AddBusinessIcon from '@mui/icons-material/AddBusiness';
+import RouteIcon from '@mui/icons-material/Route';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
-import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
-import GroupIcon from '@mui/icons-material/Group';
-import MapIcon from '@mui/icons-material/Map';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -31,55 +31,62 @@ export default function Navbar() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
 
+  const esAdmin = usuario?.rol === 'administrador';
+
+  const items = [
+    { label: 'Inicio', path: '/dashboard', icon: <DashboardIcon fontSize="small" /> },
+    { label: 'Nuevo Punto', path: '/nuevo-punto', icon: <AddBusinessIcon fontSize="small" /> },
+    { label: 'Ruta del Día', path: '/ruta-dia', icon: <RouteIcon fontSize="small" /> },
+    { label: 'Reposición', path: '/reposicion', icon: <Inventory2Icon fontSize="small" /> },
+    { label: 'Evidencias', path: '/evidencias', icon: <PhotoCameraIcon fontSize="small" /> }
+  ];
+
+  if (esAdmin) {
+    items.push({
+      label: 'Administración',
+      path: '/administracion',
+      icon: <AdminPanelSettingsIcon fontSize="small" />
+    });
+  }
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const items = [
-    { label: 'Inicio', path: '/dashboard', icon: <DashboardIcon fontSize="small" /> },
-    { label: 'Negocios', path: '/negocios', icon: <StoreIcon fontSize="small" /> },
-    { label: 'Productos', path: '/productos', icon: <Inventory2Icon fontSize="small" /> },
-    { label: 'Visitas', path: '/visitas', icon: <AssignmentTurnedInIcon fontSize="small" /> },
-    { label: 'Mapa', path: '/mapa', icon: <MapIcon fontSize="small" /> }
-  ];
-
-  if (usuario?.rol === 'administrador') {
-    items.push({ label: 'Empleados', path: '/empleados', icon: <GroupIcon fontSize="small" /> });
-  }
-
   return (
     <>
       <AppBar
         position="sticky"
-        elevation={1}
+        elevation={0}
         sx={{
-          backgroundColor: '#111827',
+          backgroundColor: '#0f172a',
           borderBottom: '1px solid rgba(255,255,255,0.08)'
         }}
       >
-        <Toolbar sx={{ minHeight: { xs: 64, md: 70 }, px: { xs: 2, md: 3 } }}>
+        <Toolbar sx={{ minHeight: { xs: 68, md: 74 }, px: { xs: 2, md: 3 } }}>
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexGrow: 1, minWidth: 0 }}>
-            <Avatar sx={{ bgcolor: '#2563eb', width: 36, height: 36, fontWeight: 'bold' }}>
-              C
+            <Avatar sx={{ bgcolor: '#2563eb', width: 40, height: 40, fontWeight: 800 }}>
+              P
             </Avatar>
 
             <Box sx={{ minWidth: 0 }}>
               <Typography
                 sx={{
                   fontWeight: 800,
-                  fontSize: { xs: '0.95rem', md: '1.1rem' },
+                  fontSize: { xs: '1rem', md: '1.1rem' },
                   lineHeight: 1.1,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'
                 }}
               >
-                Consignación
+                PuntoConsigna
               </Typography>
+
               <Typography
                 sx={{
-                  fontSize: { xs: '0.7rem', md: '0.78rem' },
+                  fontSize: { xs: '0.72rem', md: '0.78rem' },
                   opacity: 0.75,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
@@ -93,30 +100,36 @@ export default function Navbar() {
 
           <Box sx={{ display: { xs: 'none', lg: 'flex' }, gap: 1, alignItems: 'center' }}>
             {items.map((item) => (
-              <Button
+              <Chip
                 key={item.path}
-                color="inherit"
-                startIcon={item.icon}
+                label={item.label}
                 onClick={() => navigate(item.path)}
+                icon={item.icon}
+                variant={location.pathname === item.path ? 'filled' : 'outlined'}
                 sx={{
-                  borderRadius: 999,
-                  px: 2,
-                  backgroundColor: location.pathname === item.path ? 'rgba(255,255,255,0.1)' : 'transparent'
+                  color: 'white',
+                  borderColor: 'rgba(255,255,255,0.18)',
+                  backgroundColor: location.pathname === item.path ? '#1d4ed8' : 'transparent',
+                  '& .MuiChip-icon': {
+                    color: 'white'
+                  }
                 }}
-              >
-                {item.label}
-              </Button>
+              />
             ))}
 
-            <Button
-              color="error"
-              variant="contained"
-              startIcon={<LogoutIcon />}
+            <Chip
+              label="Salir"
               onClick={handleLogout}
-              sx={{ borderRadius: 999 }}
-            >
-              Salir
-            </Button>
+              icon={<LogoutIcon />}
+              variant="filled"
+              sx={{
+                color: 'white',
+                backgroundColor: '#dc2626',
+                '& .MuiChip-icon': {
+                  color: 'white'
+                }
+              }}
+            />
           </Box>
 
           <IconButton
@@ -133,7 +146,7 @@ export default function Navbar() {
         <Box sx={{ width: 290 }}>
           <Box sx={{ p: 2 }}>
             <Typography fontWeight="bold" fontSize="1.1rem">
-              Menú
+              PuntoConsigna
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {usuario?.nombre} · {usuario?.rol}
@@ -176,3 +189,5 @@ export default function Navbar() {
     </>
   );
 }
+
+
